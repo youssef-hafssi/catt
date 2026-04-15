@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import Cat from './components/Cat'
 import './App.css'
 
 declare global {
@@ -15,9 +17,12 @@ declare global {
 
 function App() {
   const api = window.desktopApi
+  const containerRef = useRef<HTMLElement | null>(null)
 
   return (
-    <main className="app">
+    <main className="app" ref={containerRef}>
+      <Cat containerRef={containerRef} />
+
       <h1>Desktop App Starter</h1>
       <p>Electron + Vite + React are now wired together.</p>
 
