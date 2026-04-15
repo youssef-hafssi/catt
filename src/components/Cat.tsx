@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import './Cat.css'
 
@@ -10,54 +10,57 @@ type Pos = { x: number; y: number }
 
 const CAT_SIZE = 56
 
-function randomInt(maxInclusive: number) {
-  return Math.floor(Math.random() * (maxInclusive + 1))
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n))
 }
 
 export default function Cat({ containerRef }: CatProps) {
   const [pos, setPos] = useState<Pos>({ x: 12, y: 12 })
   const [flip, setFlip] = useState(false)
-  const [durationMs, setDurationMs] = useState(900)
+
+  const targetRef = useRef<Pos>(pos)
+  const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
-    let timeoutId: number | undefined
+    const el = containerRef.current
+    if (!el) return
 
-    const tick = () => {
-      const el = containerRef.current
-      if (!el) {
-        timeoutId = window.setTimeout(tick, 250)
-        return
-      }
+    const update = () => {
+      rafRef.current = null
+      const next = targetRef.current
+      setPos((prev) => {
+        setFlip(next.x < prev.x)
+        return next
+      })
+    }
 
+    const onPointerMove = (ev: PointerEvent) => {
       const rect = el.getBoundingClientRect()
       const maxX = Math.max(0, Math.floor(rect.width - CAT_SIZE))
       const maxY = Math.max(0, Math.floor(rect.height - CAT_SIZE))
 
-      const nextX = randomInt(maxX)
-      const nextY = randomInt(maxY)
-      const nextDuration = 700 + randomInt(900) // 700–1600ms
+      const x = clamp(Math.floor(ev.clientX - rect.left - CAT_SIZE / 2), 0, maxX)
+      const y = clamp(Math.floor(ev.clientY - rect.top - CAT_SIZE / 2), 0, maxY)
 
-      setDurationMs(nextDuration)
-      setPos((prev) => {
-        setFlip(nextX < prev.x)
-        return { x: nextX, y: nextY }
-      })
+      targetRef.current = { x, y }
 
-      timeoutId = window.setTimeout(tick, nextDuration)
+      if (rafRef.current === null) {
+        rafRef.current = window.requestAnimationFrame(update)
+      }
     }
 
-    tick()
+    el.addEventListener('pointermove', onPointerMove, { passive: true })
 
     return () => {
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId)
+      el.removeEventListener('pointermove', onPointerMove)
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current)
       }
     }
   }, [containerRef])
 
   const style = {
     transform: `translate(${pos.x}px, ${pos.y}px) scaleX(${flip ? -1 : 1})`,
-    ['--cat-move-ms' as never]: `${durationMs}ms`,
   } as CSSProperties
 
   return (
