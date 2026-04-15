@@ -1,0 +1,6 @@
+.moving-cat {
+  position: absolute;
+  width: 100px;
+  height: auto;
+  transition: all 2s ease-in-out;
+}
